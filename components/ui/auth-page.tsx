@@ -167,7 +167,10 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
                   <AtSign size={16} color="rgba(255,255,255,0.3)" style={{ position:'absolute',left:16,top:'50%',transform:'translateY(-50%)',pointerEvents:'none' }} />
                   <input
                     type="text" placeholder={tab==='signup'?'Choose a username (e.g. amir_k)':'Your username'}
-                    value={username} onChange={e=>{ setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,'')); setError(''); }} onKeyDown={handleKey}
+                    value={username}
+                    onChange={e=>{ setUsername(e.target.value.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9_]/g,'')); setError(''); }}
+                    onPaste={e=>{ e.preventDefault(); const t=e.clipboardData.getData('text').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9_]/g,''); setUsername(t); setError(''); }}
+                    onKeyDown={handleKey}
                     autoComplete="username" autoFocus
                     style={{ width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:12,padding:'14px 16px 14px 44px',color:'#f5f0e8',fontSize:14,fontFamily:'Manrope, sans-serif',outline:'none',transition:'border-color 0.2s',boxSizing:'border-box' }}
                     onFocus={e=>(e.target.style.borderColor=accent)} onBlur={e=>(e.target.style.borderColor='rgba(255,255,255,0.1)')} />
