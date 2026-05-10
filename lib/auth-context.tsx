@@ -9,7 +9,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: any; needsConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUpWithUsername: (username: string, password: string) => Promise<{ error: any; needsConfirmation: boolean }>;
+  signUpWithUsername: (username: string, password: string, role: 'creator' | 'business') => Promise<{ error: any; needsConfirmation: boolean }>;
   signInWithUsername: (username: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
@@ -50,12 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUpWithUsername = async (username: string, password: string) => {
+  const signUpWithUsername = async (username: string, password: string, role: 'creator' | 'business') => {
     // Create user server-side (pre-confirmed, no email sent)
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.toLowerCase().trim(), password }),
+      body: JSON.stringify({ username: username.toLowerCase().trim(), password, role }),
     });
     const json = await res.json();
     if (!res.ok) return { error: { message: json.error }, needsConfirmation: false };

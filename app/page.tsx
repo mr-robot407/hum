@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Loader2, Plus, Home, Target, Users, BarChart3, LogOut, Flame, Bell, Settings, Lock, Send, DollarSign } from 'lucide-react'
 import { useAuth } from '../lib/auth-context'
+import { supabase } from '../lib/supabase'
 import HUMLanding from '../components/ui/hum-landing'
 import AuthPage from '../components/ui/auth-page'
 import StepperProfile from '../components/ui/stepper-profile'
@@ -73,16 +74,33 @@ export default function HUM() {
         const res = await fetch('/api/profiles')
         const data = await res.json()
         const up = data.profiles?.find((p:any) => p.user_id === uid)
-        if (up) { setProfile(up); setGeneratedBio(up.generated_bio||''); setMode('creator'); setCreatorView('dashboard'); fetchAll('creator') }
-        else { setMode('creator'); setCreatorView('profile-setup') }
+        if (up) {
+          setProfile(up); setGeneratedBio(up.generated_bio||'')
+          setMode('creator'); setCreatorView('dashboard'); fetchAll('creator')
+        } else {
+          // New creator — send to profile setup
+          const { data: { user: au } } = await supabase.auth.getUser()
+          const uname = au?.user_metadata?.username || ''
+          setProfile(p => ({ ...p, name: uname, handle: uname }))
+          setMode('creator'); setCreatorView('profile-setup')
+        }
       } catch { setMode('creator'); setCreatorView('profile-setup') }
     } else {
       try {
         const res = await fetch('/api/businesses')
         const data = await res.json()
         const ub = data.businesses?.find((b:any) => b.user_id === uid)
-        if (ub) { setBusiness(ub); setMode('business'); setBusinessView('dashboard'); fetchAll('business') }
-        else { setMode('business'); setBusinessView('biz-setup') }
+        if (ub) {
+          setBusiness(ub); setMode('business'); setBusinessView('dashboard'); fetchAll('business')
+        } else {
+          // Auto-create minimal business so user goes straight to dashboard
+          const { data: { user: au } } = await supabase.auth.getUser()
+          const uname = au?.user_metadata?.username || uid.slice(0,8)
+          const r2 = await fetch('/api/businesses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:uname, handle:uname, niche:'General', description:'', ai_strategy:'', user_id:uid }) })
+          const d2 = await r2.json()
+          if (d2.business) { setBusiness(d2.business); setMode('business'); setBusinessView('dashboard'); fetchAll('business') }
+          else { setMode('business'); setBusinessView('biz-setup') }
+        }
       } catch { setMode('business'); setBusinessView('biz-setup') }
     }
     setPendingMode(null)
@@ -654,10 +672,25 @@ function BusinessDashboard({ business, campaigns, creators, sentOffers, onFindCr
                     <Users size={20} color="#8e5ce0"/>
                   </div>
                   <div style={{ flex:1,minWidth:0 }}>
-                    <div style={{ fontWeight:700,fontSize:14,color:'#f5f0e8',fontFamily:'Manrope, sans-serif' }}>{c.name}</div>
-                    <div style={{ fontSize:11,color:'rgba(255,255,255,0.35)',fontFamily:'DM Mono, monospace',marginTop:2 }}>
-                      @{c.handle}{c.type?` · ${c.type}`:''}{c.followers>0?` · ${fmt(c.followers)} followers`:''}
+                    <div style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' }}>
+                      <span style={{ fontWeight:700,fontSize:14,color:'#f5f0e8',fontFamily:'Manrope, sans-serif' }}>{c.name}</span>
+                      {c.type && <span style={{ fontSize:10,color:'#8e5ce0',background:'rgba(142,92,224,0.12)',border:'1px solid rgba(142,92,224,0.25)',borderRadius:6,padding:'1px 7px',fontFamily:'DM Mono, monospace' }}>{c.type}</span>}
                     </div>
+                    <div style={{ fontSize:11,color:'rgba(255,255,255,0.3)',fontFamily:'DM Mono, monospace',marginTop:3 }}>@{c.handle}{c.ig_handle?` · IG @${c.ig_handle}`:''}</div>
+                    {(c.followers>0||c.monthly_views>0||c.engagement_rate>0) && (
+                      <div style={{ display:'flex',gap:12,marginTop:6,flexWrap:'wrap' }}>
+                        {c.followers>0 && <span style={{ fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono, monospace' }}><span style={{ color:'#c9a84c',fontWeight:700 }}>{fmt(c.followers)}</span> followers</span>}
+                        {c.monthly_views>0 && <span style={{ fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono, monospace' }}><span style={{ color:'#5c8de0',fontWeight:700 }}>{fmt(c.monthly_views)}</span> mo. views</span>}
+                        {c.engagement_rate>0 && <span style={{ fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono, monospace' }}><span style={{ color:'#5ce0b8',fontWeight:700 }}>{c.engagement_rate}%</span> engagement</span>}
+                      </div>
+                    )}
+                    {c.vibes?.length>0 && (
+                      <div style={{ display:'flex',gap:5,marginTop:6,flexWrap:'wrap' }}>
+                        {c.vibes.slice(0,3).map((v:string)=>(
+                          <span key={v} style={{ fontSize:10,color:'rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.05)',borderRadius:5,padding:'1px 7px',fontFamily:'DM Mono, monospace' }}>#{v}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button onClick={()=>{ if(!alreadySent) setComposeFor(c.handle) }} disabled={alreadySent}
                     style={{ display:'flex',alignItems:'center',gap:6,background:alreadySent?'rgba(255,255,255,0.04)':'rgba(201,168,76,0.1)',border:`1px solid ${alreadySent?'rgba(255,255,255,0.07)':'rgba(201,168,76,0.3)'}`,color:alreadySent?'rgba(255,255,255,0.2)':'#c9a84c',borderRadius:9999,padding:'8px 16px',fontSize:12,fontWeight:700,cursor:alreadySent?'default':'pointer',fontFamily:'Manrope, sans-serif',flexShrink:0,transition:'all 0.15s' }}>

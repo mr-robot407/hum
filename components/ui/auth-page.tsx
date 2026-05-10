@@ -67,24 +67,23 @@ export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
       if (tab === 'signin') {
         const { error: e } = await signInWithUsername(username.trim(), password);
         if (e) { setError(friendlyError(e.message, 'username')); setLoading(false); }
+        else setTimeout(() => onSuccess('done'), 300);
       } else {
-        const { error: e, needsConfirmation } = await signUpWithUsername(username.trim(), password);
+        const { error: e, needsConfirmation } = await signUpWithUsername(username.trim(), password, mode);
         if (e) { setError(friendlyError(e.message, 'username')); setLoading(false); }
-        else if (needsConfirmation) {
-          // fake email — confirmation won't arrive; tell user to ask admin
-          setLoading(false);
-          setError('Account created but email confirmation is on. Ask admin to disable it in Supabase, or sign in now if already confirmed.');
-        }
-        // on success onAuthStateChange fires and routes the user
+        else if (needsConfirmation) { setLoading(false); setError('Account created — sign in now.'); setTab('signin'); }
+        else setTimeout(() => onSuccess('done'), 300);
       }
     } else {
       if (tab === 'signin') {
         const { error: e } = await signIn(email.trim(), password);
         if (e) { setError(friendlyError(e.message, 'email')); setLoading(false); }
+        else setTimeout(() => onSuccess('done'), 300);
       } else {
         const { error: e, needsConfirmation } = await signUp(email.trim(), password);
         if (e) { setError(friendlyError(e.message, 'email')); setLoading(false); }
         else if (needsConfirmation) { setLoading(false); setEmailSent(true); }
+        else setTimeout(() => onSuccess('done'), 300);
       }
     }
   };

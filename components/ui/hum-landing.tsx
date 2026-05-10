@@ -38,38 +38,37 @@ function ScrollIndicator({ visible }: { visible: boolean }) {
           exit={{ opacity: 0 }}
           style={{
             position: 'fixed',
-            left: 32,
+            left: 36,
             top: '50%',
             transform: 'translateY(-50%)',
             zIndex: 50,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 12,
+            gap: 14,
           }}
         >
-          {/* Rotated label */}
           <div style={{
             writingMode: 'vertical-rl',
             textOrientation: 'mixed',
             transform: 'rotate(180deg)',
-            fontSize: 9,
-            letterSpacing: '0.25em',
-            color: 'rgba(255,255,255,0.25)',
+            fontSize: 11,
+            letterSpacing: '0.22em',
+            color: '#c9a84c',
             fontFamily: 'DM Mono, monospace',
             textTransform: 'uppercase',
+            fontWeight: 600,
           }}>
             Scroll to explore
           </div>
-          {/* Line with moving dot */}
-          <div style={{ position: 'relative', width: 1, height: 80, background: 'rgba(255,255,255,0.1)' }}>
+          <div style={{ position: 'relative', width: 2, height: 96, background: 'rgba(201,168,76,0.25)', borderRadius: 2 }}>
             <motion.div
-              animate={{ y: [0, 72, 0] }}
+              animate={{ y: [0, 88, 0] }}
               transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ width: 5, height: 5, borderRadius: '50%', background: '#c9a84c', boxShadow: '0 0 8px #c9a84c', position: 'absolute', left: -2 }}
+              style={{ width: 8, height: 8, borderRadius: '50%', background: '#c9a84c', boxShadow: '0 0 12px #c9a84c', position: 'absolute', left: -3 }}
             />
           </div>
-          <ArrowDown size={12} color="rgba(255,255,255,0.2)" />
+          <ArrowDown size={16} color="#c9a84c" />
         </motion.div>
       )}
     </AnimatePresence>
@@ -233,24 +232,24 @@ export default function HUMLanding({
         {/* Ch 1 — Dark — The Problem */}
         <FlowSection aria-label="The problem" style={{ backgroundColor: '#080806', color: '#f5f0e8' }}>
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.28em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(255,255,255,0.3)', margin: 0 }}>01 — The Problem</p>
+            <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(255,255,255,0.55)', margin: 0 }}>01 — The Problem</p>
 
             <div>
-              <div style={{ width: 40, height: 1, background: 'rgba(201,168,76,0.4)', marginBottom: 32 }} />
+              <div style={{ width: 48, height: 2, background: '#c9a84c', marginBottom: 32 }} />
               <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(52px,9vw,120px)', fontWeight: 400, lineHeight: 0.88, letterSpacing: '0.02em', margin: '0 0 40px' }}>
                 Kashmir<br />Business<br />Is Stuck<br />
-                <span style={{ color: 'rgba(255,255,255,0.2)' }}>Offline</span>
+                <span style={{ color: '#c9a84c', opacity: 0.7 }}>Offline</span>
               </h2>
-              <p style={{ fontSize: 'clamp(15px,1.6vw,18px)', fontWeight: 300, lineHeight: 1.75, color: 'rgba(255,255,255,0.5)', maxWidth: '44ch', margin: 0, fontFamily: 'Manrope, sans-serif' }}>
+              <p style={{ fontSize: 'clamp(15px,1.6vw,18px)', fontWeight: 300, lineHeight: 1.75, color: 'rgba(255,255,255,0.65)', maxWidth: '44ch', margin: 0, fontFamily: 'Manrope, sans-serif' }}>
                 The businesses that survive the next decade will be the ones that own their digital narrative today. Most Kashmir businesses have zero strategy.
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '4vw', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '3vw' }}>
+            <div style={{ display: 'flex', gap: '4vw', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '3vw' }}>
               {[['80%','of Kashmir businesses have zero digital marketing strategy'],['₹0','earned by most local creators from brands that need them'],['Weeks','wasted finding the right creator through WhatsApp']].map(([n,d]) => (
                 <div key={n} style={{ flex: 1, minWidth: 160 }}>
-                  <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(28px,3.5vw,44px)', color: '#c9a84c', letterSpacing: '0.04em', lineHeight: 1, marginBottom: 10 }}>{n}</div>
-                  <p style={{ fontSize: 'clamp(12px,1.1vw,14px)', lineHeight: 1.65, color: 'rgba(255,255,255,0.4)', fontFamily: 'Manrope, sans-serif', fontWeight: 300, margin: 0 }}>{d}</p>
+                  <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(32px,3.5vw,52px)', color: '#c9a84c', letterSpacing: '0.04em', lineHeight: 1, marginBottom: 12 }}>{n}</div>
+                  <p style={{ fontSize: 'clamp(13px,1.2vw,15px)', lineHeight: 1.7, color: 'rgba(255,255,255,0.6)', fontFamily: 'Manrope, sans-serif', fontWeight: 300, margin: 0 }}>{d}</p>
                 </div>
               ))}
             </div>
@@ -260,7 +259,7 @@ export default function HUMLanding({
         {/* Ch 2 — Cream — How HUM Works (merged digitizer) */}
         <FlowSection aria-label="How HUM works" style={{ backgroundColor: '#f5f0e8', color: '#000' }}>
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.28em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(0,0,0,0.35)', margin: 0 }}>02 — How HUM Works</p>
+            <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(0,0,0,0.5)', margin: 0 }}>02 — How HUM Works</p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6vw', alignItems: 'center', flex: 1, padding: '4vw 0' }}>
               {/* Left — headline + steps */}
@@ -303,7 +302,7 @@ export default function HUMLanding({
         {/* Ch 3 — Dark — The Vision */}
         <FlowSection aria-label="The vision" style={{ backgroundColor: '#080806', color: '#f5f0e8' }}>
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.28em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(255,255,255,0.3)', margin: 0 }}>03 — The Vision</p>
+            <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(255,255,255,0.55)', margin: 0 }}>03 — The Vision</p>
 
             <div>
               <div style={{ width: 40, height: 1, background: 'rgba(201,168,76,0.4)', marginBottom: 32 }} />
@@ -335,7 +334,7 @@ export default function HUMLanding({
         {/* Ch 4 — Cream — Testimonials */}
         <FlowSection aria-label="What businesses say" style={{ backgroundColor: '#f5f0e8', color: '#000' }}>
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.28em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(0,0,0,0.35)', margin: 0 }}>04 — What Businesses Say</p>
+            <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(0,0,0,0.5)', margin: 0 }}>04 — What Businesses Say</p>
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '4vw 0' }}>
               <div style={{ width: 40, height: 1, background: 'rgba(0,0,0,0.2)', marginBottom: 28 }} />
@@ -350,7 +349,7 @@ export default function HUMLanding({
         {/* Ch 5 — Gold — Final CTA */}
         <FlowSection aria-label="Join HUM" style={{ backgroundColor: '#c9a84c', color: '#000' }}>
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.28em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(0,0,0,0.4)', margin: 0 }}>05 — Join HUM</p>
+            <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', color: 'rgba(0,0,0,0.55)', margin: 0 }}>05 — Join HUM</p>
 
             <div>
               <div style={{ width: 40, height: 1, background: 'rgba(0,0,0,0.2)', marginBottom: 32 }} />
