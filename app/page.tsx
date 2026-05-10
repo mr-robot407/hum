@@ -93,13 +93,11 @@ export default function HUM() {
         if (ub) {
           setBusiness(ub); setMode('business'); setBusinessView('dashboard'); fetchAll('business')
         } else {
-          // Auto-create minimal business so user goes straight to dashboard
+          // New business — send to setup flow
           const { data: { user: au } } = await supabase.auth.getUser()
-          const uname = au?.user_metadata?.username || uid.slice(0,8)
-          const r2 = await fetch('/api/businesses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:uname, handle:uname, niche:'General', description:'', ai_strategy:'', user_id:uid }) })
-          const d2 = await r2.json()
-          if (d2.business) { setBusiness(d2.business); setMode('business'); setBusinessView('dashboard'); fetchAll('business') }
-          else { setMode('business'); setBusinessView('biz-setup') }
+          const uname = au?.user_metadata?.username || ''
+          setBusiness((b:any) => ({ ...b, name: uname, handle: uname }))
+          setMode('business'); setBusinessView('biz-setup')
         }
       } catch { setMode('business'); setBusinessView('biz-setup') }
     }
