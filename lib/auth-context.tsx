@@ -52,35 +52,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithUsername = async (username: string, password: string, role: 'creator' | 'business') => {
     const email = toEmail(username);
-
-    // Try admin register API first (pre-confirms user, no email sent)
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username.toLowerCase().trim(), password, role }),
     });
     const json = await res.json();
-
-    if (res.ok) {
-      // Admin path succeeded — sign in immediately
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error, needsConfirmation: false };
-    }
-
-    // If it's a server config error (key missing), fall back to regular signUp
-    // Requires "Confirm email" to be OFF in Supabase Auth settings
-    if (res.status === 500) {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { username, role } },
-      });
-      if (error) return { error, needsConfirmation: false };
-      return { error: null, needsConfirmation: !data?.session };
-    }
-
-    // Other errors (validation, duplicate, etc.)
-    return { error: { message: json.error }, needsConfirmation: false };
+    if (!res.ok) return { error: { message: json.error }, needsConfirmation: false };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error, needsConfirmation: false };
   };
 
   const signInWithUsername = async (username: string, password: string) => {
