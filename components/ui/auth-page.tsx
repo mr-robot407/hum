@@ -1,19 +1,18 @@
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, ArrowRight, Loader2, AlertCircle, Building2, Music2, SkipForward } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, AlertCircle, Building2, Music2 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
 interface AuthPageProps {
   mode: 'creator' | 'business';
   onSuccess: (userId: string) => void;
-  onSkip: () => void;
   onBack: () => void;
 }
 
-type Tab = 'signin' | 'signup' | 'skip';
+type Tab = 'signin' | 'signup';
 
-export default function AuthPage({ mode, onSuccess, onSkip, onBack }: AuthPageProps) {
+export default function AuthPage({ mode, onSuccess, onBack }: AuthPageProps) {
   const { signIn, signUp } = useAuth();
   const [tab, setTab] = useState<Tab>('signin');
   const [email, setEmail] = useState('');
@@ -97,69 +96,57 @@ export default function AuthPage({ mode, onSuccess, onSkip, onBack }: AuthPagePr
           </p>
         </div>
 
-        {/* 3-tab picker */}
+        {/* 2-tab picker */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 3, marginBottom: 28, gap: 2 }}>
-          {(['signin', 'signup', 'skip'] as Tab[]).map(t => (
-            <button key={t} onClick={() => { setTab(t); setError(''); if (t === 'skip') onSkip(); }}
-              style={{ flex: 1, padding: '9px 6px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Manrope, sans-serif', transition: 'all 0.15s', letterSpacing: '0.02em',
-                background: tab === t ? (t === 'skip' ? `${accent}20` : 'rgba(255,255,255,0.1)') : 'transparent',
-                color: tab === t ? (t === 'skip' ? accent : '#f5f0e8') : 'rgba(255,255,255,0.35)',
+          {(['signin', 'signup'] as Tab[]).map(t => (
+            <button key={t} onClick={() => { setTab(t); setError(''); }}
+              style={{ flex: 1, padding: '9px 6px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Manrope, sans-serif', transition: 'all 0.15s', letterSpacing: '0.02em',
+                background: tab === t ? 'rgba(255,255,255,0.1)' : 'transparent',
+                color: tab === t ? '#f5f0e8' : 'rgba(255,255,255,0.35)',
               }}>
-              {t === 'signin' ? 'Sign In' : t === 'signup' ? 'Sign Up' : 'Skip →'}
+              {t === 'signin' ? 'Sign In' : 'Create Account'}
             </button>
           ))}
         </div>
 
         <AnimatePresence mode="wait">
-          {tab !== 'skip' && (
-            <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
-              {/* Form */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-                <div style={{ position: 'relative' }}>
-                  <Mail size={16} color="rgba(255,255,255,0.3)" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                  <input type="email" placeholder="Email address" value={email}
-                    onChange={e => { setEmail(e.target.value); setError(''); }} onKeyDown={handleKey}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 16px 14px 44px', color: '#f5f0e8', fontSize: 14, fontFamily: 'Manrope, sans-serif', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                    onFocus={e => (e.target.style.borderColor = accent)} onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')} />
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} color="rgba(255,255,255,0.3)" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                  <input type="password" placeholder="Password" value={password}
-                    onChange={e => { setPassword(e.target.value); setError(''); }} onKeyDown={handleKey}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 16px 14px 44px', color: '#f5f0e8', fontSize: 14, fontFamily: 'Manrope, sans-serif', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                    onFocus={e => (e.target.style.borderColor = accent)} onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')} />
-                </div>
-
-                <AnimatePresence>
-                  {error && (
-                    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', borderRadius: 10, padding: '10px 14px' }}>
-                      <AlertCircle size={14} color="#e05c5c" />
-                      <span style={{ fontSize: 13, color: '#e05c5c', fontFamily: 'Manrope, sans-serif' }}>{error}</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <button onClick={handleSubmit} disabled={loading}
-                  style={{ background: accent, color: '#000', border: 'none', borderRadius: 9999, padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, letterSpacing: '0.04em', transition: 'all 0.2s', fontFamily: 'Manrope, sans-serif' }}
-                  onMouseEnter={e => { if (!loading) (e.currentTarget.style.opacity = '0.9'); }}
-                  onMouseLeave={e => { (e.currentTarget.style.opacity = loading ? '0.7' : '1'); }}>
-                  {loading ? <><Loader2 size={16} className="spin" />Processing...</> : <>{tab === 'signin' ? 'Sign In' : 'Create Account'} <ArrowRight size={16} /></>}
-                </button>
+          <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
+            {/* Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+              <div style={{ position: 'relative' }}>
+                <Mail size={16} color="rgba(255,255,255,0.3)" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                <input type="email" placeholder="Email address" value={email}
+                  onChange={e => { setEmail(e.target.value); setError(''); }} onKeyDown={handleKey}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 16px 14px 44px', color: '#f5f0e8', fontSize: 14, fontFamily: 'Manrope, sans-serif', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  onFocus={e => (e.target.style.borderColor = accent)} onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')} />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} color="rgba(255,255,255,0.3)" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                <input type="password" placeholder="Password (min 6 characters)" value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }} onKeyDown={handleKey}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 16px 14px 44px', color: '#f5f0e8', fontSize: 14, fontFamily: 'Manrope, sans-serif', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                  onFocus={e => (e.target.style.borderColor = accent)} onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')} />
+              </div>
 
-        {/* Skip hint */}
-        {tab === 'skip' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '16px 0' }}>
-            <SkipForward size={24} color={accent} style={{ margin: '0 auto 12px', display: 'block' }} />
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Manrope, sans-serif', lineHeight: 1.6 }}>
-              Entering test mode — no account needed.<br />Your data won't be saved.
-            </p>
+              <AnimatePresence>
+                {error && (
+                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', borderRadius: 10, padding: '10px 14px' }}>
+                    <AlertCircle size={14} color="#e05c5c" />
+                    <span style={{ fontSize: 13, color: '#e05c5c', fontFamily: 'Manrope, sans-serif' }}>{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <button onClick={handleSubmit} disabled={loading}
+                style={{ background: accent, color: '#000', border: 'none', borderRadius: 9999, padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, letterSpacing: '0.04em', transition: 'all 0.2s', fontFamily: 'Manrope, sans-serif' }}
+                onMouseEnter={e => { if (!loading) (e.currentTarget.style.opacity = '0.9'); }}
+                onMouseLeave={e => { (e.currentTarget.style.opacity = loading ? '0.7' : '1'); }}>
+                {loading ? <><Loader2 size={16} className="spin" />Processing...</> : <>{tab === 'signin' ? 'Sign In' : 'Create Account'} <ArrowRight size={16} /></>}
+              </button>
+            </div>
           </motion.div>
-        )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

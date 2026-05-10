@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Loader2, Plus, Home, Target, Users, BarChart3, LogOut, Flame, Bell, Settings, Lock } from 'lucide-react'
+import { Loader2, Plus, Home, Target, Users, BarChart3, LogOut, Flame, Bell, Settings, Lock, Send, DollarSign } from 'lucide-react'
 import { useAuth } from '../lib/auth-context'
 import HUMLanding from '../components/ui/hum-landing'
 import AuthPage from '../components/ui/auth-page'
@@ -25,6 +25,7 @@ const INDUSTRIES = [
   { id:'other',       label:'Other',                   icon:'✦',  subs:[] },
 ]
 const BUDGETS = ['₹5,000 - ₹15,000','₹15,000 - ₹50,000','₹50,000 - ₹1,50,000','₹1,50,000+']
+const fmt = (n: number) => n >= 1000000 ? `${(n/1000000).toFixed(1)}M` : n >= 1000 ? `${(n/1000).toFixed(0)}K` : n.toString()
 
 export default function HUM() {
   const { user, loading: authLoading, signOut } = useAuth()
@@ -40,6 +41,7 @@ export default function HUM() {
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [creators, setCreators] = useState<any[]>([])
   const [offers, setOffers] = useState<any[]>([])
+  const [sentOffers, setSentOffers] = useState<any[]>([])
   const [generatedBio, setGeneratedBio] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
   const [dropForm, setDropForm] = useState({ title:'', description:'', type:'music' })
@@ -57,6 +59,8 @@ export default function HUM() {
       if (saved) {
         localStorage.removeItem('hum_pending_mode')
         checkAndRoute(saved, user.id)
+      } else {
+        autoDetectRole(user.id)
       }
     }
   }, [user, authLoading])
@@ -82,6 +86,23 @@ export default function HUM() {
       } catch { setMode('business'); setBusinessView('biz-setup') }
     }
     setPendingMode(null)
+  }
+
+  const autoDetectRole = async (userId: string) => {
+    try {
+      const [profRes, bizRes] = await Promise.all([fetch('/api/profiles'), fetch('/api/businesses')])
+      const [profData, bizData] = await Promise.all([profRes.json(), bizRes.json()])
+      const up = profData.profiles?.find((p: any) => p.user_id === userId)
+      const ub = bizData.businesses?.find((b: any) => b.user_id === userId)
+      if (up) {
+        setProfile(up); setGeneratedBio(up.generated_bio || '')
+        setMode('creator'); setCreatorView('dashboard')
+        fetchAll('creator'); fetchOffers(up.handle)
+      } else if (ub) {
+        setBusiness(ub); setMode('business'); setBusinessView('dashboard')
+        fetchAll('business'); fetchSentOffers(ub.name)
+      }
+    } catch {}
   }
 
   const handleSelectMode = (m: 'creator'|'business') => {
@@ -117,16 +138,6 @@ export default function HUM() {
     }
   }
 
-  const handleSkipAuth = () => {
-    const target = pendingMode
-    if (!target) return
-    localStorage.removeItem('hum_pending_mode')
-    setPendingMode(null)
-    setMode(target)
-    if (target === 'creator') setCreatorView('profile-setup')
-    else setBusinessView('biz-setup')
-  }
-
   const fetchAll = async (m: string) => {
     if (m === 'creator' || m === 'both') {
       fetch('/api/drops').then(r=>r.json()).then(d=>{ if(d.drops) setDrops(d.drops) }).catch(()=>{})
@@ -135,11 +146,20 @@ export default function HUM() {
     if (m === 'business' || m === 'both') {
       fetch('/api/campaigns').then(r=>r.json()).then(d=>{ if(d.campaigns) setCampaigns(d.campaigns) }).catch(()=>{})
       fetch('/api/profiles').then(r=>r.json()).then(d=>{ if(d.profiles) setCreators(d.profiles) }).catch(()=>{})
+      if (business.name) fetchSentOffers(business.name)
     }
   }
 
   const fetchOffers = async (handle: string) => {
     fetch(`/api/offers?creator_handle=${handle}`).then(r=>r.json()).then(d=>{ if(d.offers) setOffers(d.offers) }).catch(()=>{})
+  }
+
+  const fetchSentOffers = async (businessName: string) => {
+    try {
+      const res = await fetch(`/api/offers?business_name=${encodeURIComponent(businessName)}`)
+      const d = await res.json()
+      if (d.offers) setSentOffers(d.offers)
+    } catch {}
   }
 
   const callAI = async (task:string, data:any) => {
@@ -152,8 +172,9 @@ export default function HUM() {
     setSavingProfile(true)
     try {
       const handle = (profile.handle||profile.name.toLowerCase().replace(/\s+/g,'')).replace('@','')
-      await fetch('/api/profiles', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...profile, handle, generated_bio:bio, user_id:user?.id }) })
-      setProfile(p=>({...p, handle, generated_bio:bio}))
+      const profRes = await fetch('/api/profiles', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...profile, handle, generated_bio:bio, user_id:user?.id }) })
+      const profData = await profRes.json()
+      setProfile(p=>({...p, handle, generated_bio:bio, id: profData.profile?.id}))
       fetchOffers(handle)
     } catch {}
     setSavingProfile(false)
@@ -163,8 +184,9 @@ export default function HUM() {
   const saveBusiness = async (strategy:string) => {
     try {
       const handle = (business.handle||business.name.toLowerCase().replace(/\s+/g,'')).replace('@','')
-      await fetch('/api/businesses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...business, handle, ai_strategy:strategy, user_id:user?.id}) })
-      setBusiness(p=>({...p, handle, ai_strategy:strategy}))
+      const bizRes = await fetch('/api/businesses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...business, handle, ai_strategy:strategy, user_id:user?.id}) })
+      const bizData = await bizRes.json()
+      setBusiness(p=>({...p, handle, ai_strategy:strategy, id: bizData.business?.id}))
     } catch {}
     setBusinessView('dashboard')
     fetchAll('business')
@@ -189,10 +211,10 @@ export default function HUM() {
     setPosting(false)
   }
 
-  const sendOffer = async (creatorHandle:string, matchData:any, campaignId?:string) => {
+  const sendOffer = async (creatorHandle:string, matchData:any, campaignId?:string, customMessage?:string) => {
     await fetch('/api/offers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
       campaign_id: campaignId || null,
-      business_id: null,
+      business_id: business.id || null,
       business_name: business.name,
       business_niche: business.niche,
       creator_handle: creatorHandle,
@@ -201,9 +223,10 @@ export default function HUM() {
       ai_match_grade: matchData.grade || 'C',
       ai_match_reason: matchData.reason || '',
       ai_collab_angle: matchData.collab_angle || '',
-      outreach_message: matchData.outreach || '',
+      outreach_message: customMessage || matchData.outreach || matchData.outreach_message || '',
       status: 'pending'
     })})
+    fetchSentOffers(business.name)
   }
 
   const acceptOffer = async (offerId:string) => {
@@ -214,6 +237,23 @@ export default function HUM() {
   const counterOffer = async (offerId:string, rate:string) => {
     await fetch(`/api/offers/${offerId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'countered', creator_rate:rate }) })
     fetchOffers(profile.handle)
+  }
+
+  const sendDirectOffer = async (creatorHandle: string, message: string) => {
+    await fetch('/api/offers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      business_id: business.id || null,
+      business_name: business.name,
+      business_niche: business.niche,
+      creator_handle: creatorHandle,
+      creator_name: creators.find((c:any) => c.handle === creatorHandle)?.name || creatorHandle,
+      ai_match_score: 0,
+      ai_match_grade: '',
+      ai_match_reason: '',
+      ai_collab_angle: '',
+      outreach_message: message,
+      status: 'pending'
+    })})
+    fetchSentOffers(business.name)
   }
 
   const handleSignOut = async () => {
@@ -232,7 +272,7 @@ export default function HUM() {
   )
 
   if (mode==='landing') return <HUMLanding onSelectBusiness={()=>handleSelectMode('business')} onSelectCreator={()=>handleSelectMode('creator')} />
-  if (mode==='auth' && pendingMode) return <AuthPage mode={pendingMode} onSuccess={handleAuthSuccess} onSkip={handleSkipAuth} onBack={()=>setMode('landing')} />
+  if (mode==='auth' && pendingMode) return <AuthPage mode={pendingMode} onSuccess={handleAuthSuccess} onBack={()=>setMode('landing')} />
 
   // Creator flows
   if (mode==='creator') {
@@ -286,7 +326,7 @@ export default function HUM() {
       ]
       return (
         <div>
-          <BusinessDashboard business={business} campaigns={campaigns} creators={creators} onFindCreators={()=>{fetchAll('business');setBusinessView('match-engine')}} onNewCampaign={()=>setBusinessView('campaign')} onRefresh={()=>fetchAll('business')} onSignOut={handleSignOut} />
+          <BusinessDashboard business={business} campaigns={campaigns} creators={creators} sentOffers={sentOffers} onFindCreators={()=>{fetchAll('business');setBusinessView('match-engine')}} onNewCampaign={()=>setBusinessView('campaign')} onRefresh={()=>fetchAll('business')} onRefreshOffers={()=>fetchSentOffers(business.name)} onSignOut={handleSignOut} onSendOffer={sendDirectOffer} />
           <HUMDock items={dockItems} />
           <FloatingActionMenu options={famOptions} />
         </div>
@@ -493,101 +533,213 @@ function BusinessOnboard({ business, setBusiness, callAI, onNext }:any) {
 }
 
 // ── Business Dashboard ─────────────────────────────────────────────────────
-function BusinessDashboard({ business, campaigns, creators, onFindCreators, onNewCampaign, onRefresh, onSignOut }:any) {
-  useEffect(()=>{ onRefresh() },[])
-  const open = campaigns.filter((c:any)=>c.status==='open').length
+function BusinessDashboard({ business, campaigns, creators, sentOffers, onFindCreators, onNewCampaign, onRefresh, onRefreshOffers, onSignOut, onSendOffer }:any) {
+  useEffect(()=>{ onRefresh(); onRefreshOffers() },[])
+  const [activeTab, setActiveTab] = useState<'creators'|'campaigns'|'sent'>('creators')
+  const [composeFor, setComposeFor] = useState<string|null>(null)
+  const [msg, setMsg] = useState('')
+  const [sending, setSending] = useState(false)
 
-  // Coming soon features
-  const comingSoon = [
-    { label:'HUM Verified', desc:'Auto-verify creator stats via Instagram API', icon:'✦' },
-    { label:'In-app Analytics', desc:'Track campaign reach and conversions live', icon:'📊' },
-    { label:'Rate Cards', desc:'Creators set prices, you browse by budget', icon:'💳' },
-    { label:'HUM Score', desc:'AI reputation score for every creator', icon:'⭐' },
-    { label:'Campaign Templates', desc:'One-click briefs for your business type', icon:'⚡' },
-    { label:'Auto-payments', desc:'HUM handles contracts and payments', icon:'🔒' },
-  ]
+  const signedUpCreators = (creators as any[]).filter((c:any) => c.user_id)
+  const open = (campaigns as any[]).filter((c:any)=>c.status==='open').length
+  const acceptedSent = (sentOffers as any[]).filter((o:any)=>o.status==='accepted').length
+
+  const handleSend = async () => {
+    if (!msg.trim() || !composeFor || sending) return
+    setSending(true)
+    await onSendOffer(composeFor, msg.trim())
+    setSending(false)
+    setMsg('')
+    setComposeFor(null)
+  }
 
   return (
     <div style={{ minHeight:'100vh',background:'#000',paddingBottom:100 }}>
       <div style={{ position:'fixed',inset:0,background:'radial-gradient(ellipse 50% 25% at 50% 0%, rgba(201,168,76,0.04) 0%, transparent 60%)',pointerEvents:'none',zIndex:0 }} />
+
+      {/* Compose modal */}
+      <AnimatePresence>
+        {composeFor && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+            style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center' }}
+            onClick={e=>{ if(e.target===e.currentTarget){setComposeFor(null);setMsg('')} }}>
+            <motion.div initial={{y:80}} animate={{y:0}} exit={{y:80}} transition={{type:'spring',damping:26,stiffness:300}}
+              style={{ width:'100%',maxWidth:540,background:'#111',border:'1px solid rgba(255,255,255,0.1)',borderTopLeftRadius:24,borderTopRightRadius:24,padding:'28px 28px 40px' }}>
+              <div style={{ fontSize:10,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.12em',marginBottom:6 }}>SEND OFFER TO</div>
+              <div style={{ fontWeight:700,fontSize:16,color:'#f5f0e8',fontFamily:'Manrope, sans-serif',marginBottom:20 }}>
+                {(creators as any[]).find((c:any)=>c.handle===composeFor)?.name || composeFor}
+                <span style={{ fontSize:12,color:'rgba(255,255,255,0.3)',fontFamily:'DM Mono, monospace',fontWeight:400,marginLeft:8 }}>@{composeFor}</span>
+              </div>
+              <textarea
+                autoFocus
+                placeholder="Describe the collab — what you need, what you're offering, timelines..."
+                value={msg} onChange={e=>setMsg(e.target.value)} rows={5}
+                style={{ width:'100%',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:12,padding:'14px 16px',color:'#f5f0e8',fontSize:14,fontFamily:'Manrope, sans-serif',outline:'none',resize:'none',boxSizing:'border-box',lineHeight:1.7 }}
+                onFocus={e=>(e.target.style.borderColor='#c9a84c')} onBlur={e=>(e.target.style.borderColor='rgba(255,255,255,0.1)')} />
+              <div style={{ display:'flex',gap:12,marginTop:16 }}>
+                <button onClick={()=>{setComposeFor(null);setMsg('')}}
+                  style={{ background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.5)',borderRadius:9999,padding:'13px 22px',fontSize:14,cursor:'pointer',fontFamily:'Manrope, sans-serif' }}>
+                  Cancel
+                </button>
+                <button onClick={handleSend} disabled={!msg.trim()||sending}
+                  style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:msg.trim()&&!sending?'#c9a84c':'rgba(255,255,255,0.05)',color:msg.trim()&&!sending?'#000':'rgba(255,255,255,0.25)',border:'none',borderRadius:9999,padding:'13px',fontSize:14,fontWeight:700,cursor:msg.trim()&&!sending?'pointer':'not-allowed',fontFamily:'Manrope, sans-serif',transition:'all 0.2s' }}>
+                  {sending?<><Loader2 size={14} className="spin"/>Sending...</>:<><Send size={14}/>Send Offer</>}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <nav style={{ position:'sticky',top:0,zIndex:10,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 28px',borderBottom:'1px solid rgba(255,255,255,0.06)',background:'rgba(0,0,0,0.92)',backdropFilter:'blur(20px)' }}>
         <div style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:24,letterSpacing:'0.08em',color:'#f5f0e8' }}>HUM <div style={{ width:5,height:5,borderRadius:'50%',background:'#c9a84c',boxShadow:'0 0 6px #c9a84c',display:'inline-block',marginLeft:4,verticalAlign:'middle' }} /></div>
         <div style={{ fontSize:13,fontWeight:600,color:'#f5f0e8',fontFamily:'Manrope, sans-serif' }}>{business.name}</div>
-        <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onFindCreators} style={{ display:'flex',alignItems:'center',gap:6,background:'#c9a84c',color:'#000',border:'none',borderRadius:9999,padding:'8px 18px',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'Manrope, sans-serif' }}>
-            <Sparkles size={13}/> Find Creators
-          </button>
-        </div>
+        <button onClick={onFindCreators} style={{ display:'flex',alignItems:'center',gap:6,background:'#c9a84c',color:'#000',border:'none',borderRadius:9999,padding:'8px 18px',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'Manrope, sans-serif' }}>
+          <Sparkles size={13}/> AI Match
+        </button>
       </nav>
 
       <div style={{ maxWidth:820,margin:'0 auto',padding:'28px 24px',position:'relative',zIndex:1 }}>
-        <div style={{ marginBottom:28 }}>
+        <div style={{ marginBottom:24 }}>
           <h2 style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:40,letterSpacing:'0.03em',color:'#f5f0e8' }}>Dashboard</h2>
           <p style={{ color:'rgba(255,255,255,0.35)',marginTop:4,fontSize:13,fontFamily:'DM Mono, monospace' }}>Your creator marketing command center</p>
         </div>
 
         {/* Stats */}
-        <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:28 }}>
-          {[[Target,open.toString(),'Active Campaigns','#c9a84c'],[Users,creators.length.toString(),'Creators Available','#8e5ce0'],[BarChart3,'∞','Potential Reach','#5ce0b8']].map(([Icon,val,label,color]:any,i)=>(
+        <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:24 }}>
+          {[
+            [Target, open.toString(), 'Campaigns', '#c9a84c'],
+            [Users, signedUpCreators.length.toString(), 'Signed-up Creators', '#8e5ce0'],
+            [Send, (sentOffers as any[]).length.toString(), `Offers Sent${acceptedSent>0?` · ${acceptedSent} accepted`:''}`, '#5ce0b8'],
+          ].map(([Icon,val,label,color]:any,i)=>(
             <div key={i} style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:'18px 16px',textAlign:'center' }}>
               <Icon size={18} color={color} style={{ margin:'0 auto 10px' }}/>
               <div style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:32,letterSpacing:'0.04em',color:'#f5f0e8' }}>{val}</div>
-              <div style={{ fontSize:10,color:'rgba(255,255,255,0.3)',fontFamily:'DM Mono, monospace',letterSpacing:'0.08em',marginTop:4 }}>{label}</div>
+              <div style={{ fontSize:10,color:'rgba(255,255,255,0.3)',fontFamily:'DM Mono, monospace',letterSpacing:'0.06em',marginTop:4 }}>{label}</div>
             </div>
           ))}
         </div>
 
-        {/* CTA — Find Creators */}
-        <div style={{ background:'linear-gradient(135deg, rgba(201,168,76,0.1), rgba(201,168,76,0.03))',border:'1px solid rgba(201,168,76,0.2)',borderRadius:20,padding:'32px',marginBottom:28,display:'flex',alignItems:'center',justifyContent:'space-between',gap:24 }}>
-          <div>
-            <div style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:32,letterSpacing:'0.03em',color:'#f5f0e8',marginBottom:8 }}>Find Your Perfect Creator</div>
-            <p style={{ fontSize:14,color:'rgba(255,255,255,0.5)',lineHeight:1.65,fontFamily:'Manrope, sans-serif',fontWeight:300,margin:0,maxWidth:'40ch' }}>AI scores every creator on niche fit, audience size and engagement. Get top 3 matches instantly.</p>
-          </div>
-          <button onClick={onFindCreators} style={{ display:'flex',alignItems:'center',gap:10,background:'#c9a84c',color:'#000',border:'none',borderRadius:9999,padding:'14px 28px',fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:'Manrope, sans-serif',flexShrink:0,transition:'all 0.2s',whiteSpace:'nowrap' }}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#e8c96a'}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='#c9a84c'}}>
-            <Sparkles size={16}/> AI Match Engine →
-          </button>
+        {/* Tabs */}
+        <div style={{ display:'flex',gap:4,marginBottom:24,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:4 }}>
+          {([
+            ['creators', `Creators (${signedUpCreators.length})`],
+            ['campaigns', `Campaigns${open>0?` (${open} open)`:''}`],
+            ['sent', `Sent Offers${(sentOffers as any[]).length>0?` (${(sentOffers as any[]).length})`:''}` ],
+          ] as [string,string][]).map(([id,label])=>(
+            <button key={id} onClick={()=>setActiveTab(id as any)}
+              style={{ flex:1,padding:'10px 8px',borderRadius:9,border:'none',cursor:'pointer',fontSize:13,fontWeight:600,fontFamily:'Manrope, sans-serif',transition:'all 0.15s',
+                background:activeTab===id?'rgba(255,255,255,0.08)':'transparent',
+                color:activeTab===id?'#f5f0e8':'rgba(255,255,255,0.35)' }}>
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Campaigns */}
-        {campaigns.length > 0 && (
-          <div style={{ marginBottom:28 }}>
-            <div style={{ fontSize:10,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.25)',letterSpacing:'0.18em',marginBottom:14,display:'flex',alignItems:'center',gap:6 }}><Target size={11}/>YOUR CAMPAIGNS</div>
-            <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
-              {campaigns.map((c:any)=>(
-                <div key={c.id} style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:20 }}>
-                  <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:8 }}>
-                    <div>
-                      <h3 style={{ fontFamily:'Instrument Serif, serif',fontSize:17,fontStyle:'italic',color:'#f5f0e8',marginBottom:4 }}>{c.title}</h3>
-                      <div style={{ fontSize:10,color:'#c9a84c',background:'rgba(201,168,76,0.1)',border:'1px solid rgba(201,168,76,0.2)',borderRadius:6,padding:'2px 8px',fontFamily:'DM Mono, monospace',display:'inline-block',letterSpacing:'0.06em' }}>{c.status}</div>
-                    </div>
-                    <div style={{ textAlign:'right' }}>
-                      <div style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:24,color:'#f5f0e8',letterSpacing:'0.04em' }}>{c.applications}</div>
-                      <div style={{ fontSize:9,color:'rgba(255,255,255,0.3)',fontFamily:'DM Mono, monospace' }}>APPS</div>
+        {/* Creators tab */}
+        {activeTab==='creators' && (
+          <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
+            {signedUpCreators.length===0 ? (
+              <div style={{ textAlign:'center',padding:'56px 0' }}>
+                <Users size={36} color="rgba(255,255,255,0.08)" style={{ margin:'0 auto 14px' }}/>
+                <p style={{ color:'rgba(255,255,255,0.3)',fontSize:14,fontFamily:'Manrope, sans-serif',marginBottom:6 }}>No creators have signed up yet.</p>
+                <p style={{ color:'rgba(255,255,255,0.2)',fontSize:12,fontFamily:'DM Mono, monospace' }}>Share HUM with Kashmir creators to grow your roster.</p>
+              </div>
+            ) : signedUpCreators.map((c:any)=>{
+              const alreadySent = (sentOffers as any[]).some((o:any)=>o.creator_handle===c.handle)
+              return (
+                <motion.div key={c.id||c.handle} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                  style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:16,padding:'18px 20px',display:'flex',alignItems:'center',gap:16 }}>
+                  <div style={{ width:44,height:44,borderRadius:12,background:'rgba(142,92,224,0.1)',border:'1px solid rgba(142,92,224,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                    <Users size={20} color="#8e5ce0"/>
+                  </div>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ fontWeight:700,fontSize:14,color:'#f5f0e8',fontFamily:'Manrope, sans-serif' }}>{c.name}</div>
+                    <div style={{ fontSize:11,color:'rgba(255,255,255,0.35)',fontFamily:'DM Mono, monospace',marginTop:2 }}>
+                      @{c.handle}{c.type?` · ${c.type}`:''}{c.followers>0?` · ${fmt(c.followers)} followers`:''}
                     </div>
                   </div>
-                  <p style={{ fontSize:13,color:'rgba(255,255,255,0.4)',lineHeight:1.6,fontFamily:'Manrope, sans-serif',margin:0 }}>{c.goal}</p>
-                </div>
-              ))}
-            </div>
+                  <button onClick={()=>{ if(!alreadySent) setComposeFor(c.handle) }} disabled={alreadySent}
+                    style={{ display:'flex',alignItems:'center',gap:6,background:alreadySent?'rgba(255,255,255,0.04)':'rgba(201,168,76,0.1)',border:`1px solid ${alreadySent?'rgba(255,255,255,0.07)':'rgba(201,168,76,0.3)'}`,color:alreadySent?'rgba(255,255,255,0.2)':'#c9a84c',borderRadius:9999,padding:'8px 16px',fontSize:12,fontWeight:700,cursor:alreadySent?'default':'pointer',fontFamily:'Manrope, sans-serif',flexShrink:0,transition:'all 0.15s' }}>
+                    <Send size={12}/> {alreadySent?'Offered':'Offer'}
+                  </button>
+                </motion.div>
+              )
+            })}
           </div>
         )}
 
-        {/* Coming Soon */}
-        <div>
-          <div style={{ fontSize:10,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.25)',letterSpacing:'0.18em',marginBottom:14,display:'flex',alignItems:'center',gap:6 }}><Lock size={11}/>COMING SOON</div>
-          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10 }}>
-            {comingSoon.map(f=>(
-              <div key={f.label} style={{ background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:12,padding:'16px 14px',opacity:0.6,position:'relative',overflow:'hidden' }}>
-                <div style={{ position:'absolute',top:8,right:10,fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.2)',letterSpacing:'0.1em',background:'rgba(255,255,255,0.05)',borderRadius:4,padding:'1px 6px' }}>SOON</div>
-                <div style={{ fontSize:18,marginBottom:8 }}>{f.icon}</div>
-                <div style={{ fontSize:12,fontWeight:700,color:'rgba(255,255,255,0.5)',fontFamily:'Manrope, sans-serif',marginBottom:4 }}>{f.label}</div>
-                <div style={{ fontSize:11,color:'rgba(255,255,255,0.25)',fontFamily:'Manrope, sans-serif',lineHeight:1.5,fontWeight:300 }}>{f.desc}</div>
+        {/* Campaigns tab */}
+        {activeTab==='campaigns' && (
+          <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
+            <div style={{ display:'flex',justifyContent:'flex-end',marginBottom:4 }}>
+              <button onClick={onNewCampaign} style={{ display:'flex',alignItems:'center',gap:6,background:'rgba(201,168,76,0.1)',border:'1px solid rgba(201,168,76,0.25)',color:'#c9a84c',borderRadius:9999,padding:'9px 18px',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:'Manrope, sans-serif' }}>
+                <Plus size={13}/> New Campaign
+              </button>
+            </div>
+            {(campaigns as any[]).length===0 ? (
+              <div style={{ textAlign:'center',padding:'48px 0' }}>
+                <Target size={36} color="rgba(255,255,255,0.08)" style={{ margin:'0 auto 14px' }}/>
+                <p style={{ color:'rgba(255,255,255,0.3)',fontSize:14,fontFamily:'Manrope, sans-serif',marginBottom:16 }}>No campaigns yet.</p>
+                <button onClick={onNewCampaign} style={{ background:'#c9a84c',color:'#000',border:'none',borderRadius:9999,padding:'12px 24px',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'Manrope, sans-serif' }}>Create Campaign →</button>
+              </div>
+            ) : (campaigns as any[]).map((c:any)=>(
+              <div key={c.id} style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:20 }}>
+                <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:8 }}>
+                  <div>
+                    <h3 style={{ fontFamily:'Instrument Serif, serif',fontSize:17,fontStyle:'italic',color:'#f5f0e8',marginBottom:6 }}>{c.title}</h3>
+                    <div style={{ fontSize:10,color:'#c9a84c',background:'rgba(201,168,76,0.1)',border:'1px solid rgba(201,168,76,0.2)',borderRadius:6,padding:'2px 8px',fontFamily:'DM Mono, monospace',display:'inline-block',letterSpacing:'0.06em' }}>{c.status}</div>
+                  </div>
+                </div>
+                <p style={{ fontSize:13,color:'rgba(255,255,255,0.4)',lineHeight:1.6,fontFamily:'Manrope, sans-serif',margin:0 }}>{c.goal}</p>
               </div>
             ))}
           </div>
-        </div>
+        )}
+
+        {/* Sent Offers tab */}
+        {activeTab==='sent' && (
+          <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
+            {(sentOffers as any[]).length===0 ? (
+              <div style={{ textAlign:'center',padding:'56px 0' }}>
+                <Send size={36} color="rgba(255,255,255,0.08)" style={{ margin:'0 auto 14px' }}/>
+                <p style={{ color:'rgba(255,255,255,0.3)',fontSize:14,fontFamily:'Manrope, sans-serif',marginBottom:6 }}>No offers sent yet.</p>
+                <p style={{ color:'rgba(255,255,255,0.2)',fontSize:12,fontFamily:'DM Mono, monospace' }}>Go to Creators tab to send your first offer.</p>
+              </div>
+            ) : (sentOffers as any[]).map((o:any)=>(
+              <motion.div key={o.id} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                style={{ background:'rgba(255,255,255,0.03)',border:`1px solid ${o.status==='accepted'?'rgba(34,197,94,0.2)':o.status==='countered'?'rgba(201,168,76,0.2)':'rgba(255,255,255,0.07)'}`,borderRadius:16,overflow:'hidden' }}>
+                {o.status==='accepted' && <div style={{ height:2,background:'linear-gradient(90deg,#22c55e,transparent)' }}/>}
+                {o.status==='countered' && <div style={{ height:2,background:'linear-gradient(90deg,#c9a84c,transparent)' }}/>}
+                <div style={{ padding:'18px 20px' }}>
+                  <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12 }}>
+                    <div>
+                      <div style={{ fontWeight:700,fontSize:14,color:'#f5f0e8',fontFamily:'Manrope, sans-serif' }}>{o.creator_name||o.creator_handle}</div>
+                      <div style={{ fontSize:11,color:'rgba(255,255,255,0.3)',fontFamily:'DM Mono, monospace',marginTop:2 }}>@{o.creator_handle}</div>
+                    </div>
+                    <span style={{ fontSize:10,fontFamily:'DM Mono, monospace',letterSpacing:'0.08em',textTransform:'uppercase',padding:'3px 10px',borderRadius:6,
+                      color:o.status==='accepted'?'#22c55e':o.status==='countered'?'#c9a84c':'rgba(255,255,255,0.4)',
+                      background:o.status==='accepted'?'rgba(34,197,94,0.1)':o.status==='countered'?'rgba(201,168,76,0.1)':'rgba(255,255,255,0.05)',
+                      border:`1px solid ${o.status==='accepted'?'rgba(34,197,94,0.25)':o.status==='countered'?'rgba(201,168,76,0.25)':'rgba(255,255,255,0.08)'}` }}>
+                      {o.status}
+                    </span>
+                  </div>
+                  {o.outreach_message && (
+                    <div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:10,padding:'10px 14px',marginBottom:o.creator_rate?10:0 }}>
+                      <div style={{ fontSize:10,color:'rgba(255,255,255,0.25)',fontFamily:'DM Mono, monospace',letterSpacing:'0.1em',marginBottom:5 }}>YOUR MESSAGE</div>
+                      <p style={{ fontSize:13,color:'rgba(255,255,255,0.55)',lineHeight:1.65,fontFamily:'Manrope, sans-serif',margin:0 }}>"{o.outreach_message}"</p>
+                    </div>
+                  )}
+                  {o.creator_rate && (
+                    <div style={{ marginTop:10,display:'flex',alignItems:'center',gap:6,fontSize:13,color:'#5ce0b8',fontFamily:'DM Mono, monospace' }}>
+                      <DollarSign size={13}/>Creator's counter-offer: {o.creator_rate}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
