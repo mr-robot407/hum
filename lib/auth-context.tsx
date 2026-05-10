@@ -17,7 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const toEmail = (username: string) =>
-  `${username.toLowerCase().trim().replace(/\s+/g, '').replace(/[^a-z0-9_]/g, '')}@humkashmir.app`;
+  `${username.toLowerCase().trim().replace(/\s+/g, '').replace(/[^a-z0-9_]/g, '')}@hum-user.com`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

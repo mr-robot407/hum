@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (!USERNAME_RE.test(username)) return NextResponse.json({ error: 'Username must be 3–20 characters: letters, numbers, underscore only' }, { status: 400 })
   if (password.length < 6) return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
 
-  const email = `${username}@humkashmir.app`
+  const email = `${username}@hum-user.com`
 
   const { data, error } = await admin.auth.admin.createUser({
     email,
