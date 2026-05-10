@@ -51,13 +51,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUpWithUsername = async (username: string, password: string) => {
-    const email = toEmail(username);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { username } },
+    // Create user server-side (pre-confirmed, no email sent)
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username.toLowerCase().trim(), password }),
     });
-    return { error, needsConfirmation: !error && !data?.session };
+    const json = await res.json();
+    if (!res.ok) return { error: { message: json.error }, needsConfirmation: false };
+
+    // Immediately sign in — user is already confirmed
+    const email = toEmail(username);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error, needsConfirmation: false };
   };
 
   const signInWithUsername = async (username: string, password: string) => {
