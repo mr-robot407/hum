@@ -141,6 +141,51 @@ function ProfilePreview({ profile, generatedBio }: { profile: any; generatedBio:
   );
 }
 
+function BioParsed({ bio, accent }: { bio: string; accent: string }) {
+  const tagline = bio.match(/TAGLINE:\s*(.+)/)?.[1]?.trim() || '';
+  const about = bio.match(/ABOUT:\s*([\s\S]+?)(?=PILLARS:|LOOKING FOR:|$)/)?.[1]?.trim() || '';
+  const pillarsRaw = bio.match(/PILLARS:\s*([\s\S]+?)(?=LOOKING FOR:|$)/)?.[1]?.trim() || '';
+  const pillars = pillarsRaw.split('\n').filter(l=>l.trim().startsWith('-')).map(l=>l.replace(/^-\s*/,'').trim()).filter(Boolean);
+  const lookingFor = bio.match(/LOOKING FOR:\s*(.+)/)?.[1]?.trim() || '';
+  return (
+    <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} style={{ display:'flex',flexDirection:'column',gap:10 }}>
+      {tagline && (
+        <div style={{ background:`${accent}08`,border:`1px solid ${accent}25`,borderRadius:14,padding:'16px 18px' }}>
+          <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:accent,letterSpacing:'0.15em',marginBottom:8 }}>✦ TAGLINE</div>
+          <p style={{ fontFamily:'Instrument Serif, serif',fontSize:18,fontStyle:'italic',color:'#f5f0e8',margin:0,lineHeight:1.4 }}>"{tagline}"</p>
+        </div>
+      )}
+      {about && (
+        <div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:'16px 18px' }}>
+          <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.15em',marginBottom:8 }}>ABOUT</div>
+          <p style={{ fontSize:13,color:'rgba(255,255,255,0.7)',lineHeight:1.75,fontFamily:'Manrope, sans-serif',fontWeight:300,margin:0 }}>{about}</p>
+        </div>
+      )}
+      {pillars.length>0 && (
+        <div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:'16px 18px' }}>
+          <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.15em',marginBottom:12 }}>CONTENT PILLARS</div>
+          <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
+            {pillars.map((p,i)=>(
+              <div key={i} style={{ display:'flex',alignItems:'center',gap:10 }}>
+                <div style={{ width:24,height:24,borderRadius:'50%',background:`${accent}15`,border:`1px solid ${accent}30`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                  <span style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:12,color:accent }}>{i+1}</span>
+                </div>
+                <span style={{ fontSize:13,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif' }}>{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {lookingFor && (
+        <div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:'14px 18px',display:'flex',alignItems:'center',gap:12 }}>
+          <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.15em',whiteSpace:'nowrap' }}>LOOKING FOR</div>
+          <p style={{ fontSize:13,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0 }}>{lookingFor}</p>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 interface StepperProfileProps {
   profile: Record<string,any>;
   setProfile: (p:any)=>void;
@@ -336,11 +381,7 @@ export default function StepperProfile({ profile, setProfile, generatedBio, setG
                     style={{ display:'flex', alignItems:'center', gap:10, background:accent, color:'#000', border:'none', borderRadius:9999, padding:'14px 28px', fontSize:14, fontWeight:700, cursor:aiLoading?'not-allowed':'pointer', opacity:aiLoading?0.7:1, marginBottom:24, fontFamily:'Manrope, sans-serif', transition:'all 0.2s' }}>
                     {aiLoading?<><Loader2 size={16} className="spin"/>Writing your identity...</>:<><Sparkles size={16}/>{generatedBio?'Regenerate':'Generate with Claude'}</>}
                   </button>
-                  {generatedBio && (
-                    <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:20 }}>
-                      <pre style={{ whiteSpace:'pre-wrap', fontFamily:'Manrope, sans-serif', fontSize:13, color:'rgba(255,255,255,0.75)', lineHeight:1.8 }}>{generatedBio}</pre>
-                    </motion.div>
-                  )}
+                  {generatedBio && <BioParsed bio={generatedBio} accent={accent} />}
                 </div>
               )}
 

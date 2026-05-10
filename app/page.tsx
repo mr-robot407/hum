@@ -409,6 +409,7 @@ function BusinessOnboard({ business, setBusiness, callAI, onNext }:any) {
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
   const [customSub, setCustomSub] = useState('')
+  const [generatedStrategy, setGeneratedStrategy] = useState('')
   const set=(k:string,v:string)=>setBusiness((p:any)=>({...p,[k]:v}))
 
   const selectedInd = INDUSTRIES.find(i=>i.id===business.industry_id)
@@ -424,13 +425,19 @@ function BusinessOnboard({ business, setBusiness, callAI, onNext }:any) {
     setCustomSub('')
   }
 
-  const generateAndSave = async () => {
+  const generateStrategy = async () => {
     setLoading(true)
     const finalNiche = business.niche || customSub
     const fullBiz = { ...business, niche: finalNiche }
     setBusiness((p:any) => ({ ...p, niche: finalNiche }))
     const s = await callAI('business_strategy', fullBiz)
-    await onNext(s)
+    setGeneratedStrategy(s)
+    setLoading(false)
+  }
+
+  const launch = async () => {
+    setLoading(true)
+    await onNext(generatedStrategy)
     setLoading(false)
   }
 
@@ -524,21 +531,39 @@ function BusinessOnboard({ business, setBusiness, callAI, onNext }:any) {
 
           {step===3 && (
             <motion.div key="3" initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-20}}>
-              <div style={{ fontSize:10,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.25)',letterSpacing:'0.18em',marginBottom:14 }}>03 — READY</div>
-              <h2 style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:48,color:'#f5f0e8',letterSpacing:'0.03em',marginBottom:8,lineHeight:0.92 }}>All set.</h2>
-              <p style={{ fontSize:14,color:'rgba(255,255,255,0.4)',marginBottom:32,lineHeight:1.65,fontFamily:'Manrope, sans-serif',fontWeight:300 }}>Claude will build your creator marketing strategy and take you to your dashboard.</p>
-              <div style={{ background:'rgba(201,168,76,0.06)',border:'1px solid rgba(201,168,76,0.15)',borderRadius:14,padding:'20px 22px',marginBottom:24 }}>
-                <div style={{ fontSize:14,color:'#f5f0e8',fontWeight:700,fontFamily:'Manrope, sans-serif',marginBottom:4 }}>{business.name}</div>
-                <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginTop:6 }}>
-                  <span style={{ fontSize:11,color:'rgba(255,255,255,0.45)',fontFamily:'DM Mono, monospace' }}>{selectedInd?.icon} {selectedInd?.label}</span>
-                  {(business.niche||customSub) && <><span style={{ color:'rgba(255,255,255,0.2)' }}>·</span><span style={{ fontSize:11,color:'rgba(255,255,255,0.45)',fontFamily:'DM Mono, monospace' }}>{business.niche||customSub}</span></>}
+              <div style={{ fontSize:10,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.25)',letterSpacing:'0.18em',marginBottom:14 }}>03 — YOUR STRATEGY</div>
+              <h2 style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:48,color:'#f5f0e8',letterSpacing:'0.03em',marginBottom:8,lineHeight:0.92 }}>{generatedStrategy?'Your Strategy':'All set.'}</h2>
+              <p style={{ fontSize:14,color:'rgba(255,255,255,0.4)',marginBottom:24,lineHeight:1.65,fontFamily:'Manrope, sans-serif',fontWeight:300 }}>
+                {generatedStrategy ? 'Claude built your creator marketing strategy. Review it, then launch.' : 'Claude will build your creator marketing strategy. Takes about 10 seconds.'}
+              </p>
+              {!generatedStrategy && (
+                <div style={{ background:'rgba(201,168,76,0.06)',border:'1px solid rgba(201,168,76,0.15)',borderRadius:14,padding:'20px 22px',marginBottom:24 }}>
+                  <div style={{ fontSize:14,color:'#f5f0e8',fontWeight:700,fontFamily:'Manrope, sans-serif',marginBottom:4 }}>{business.name}</div>
+                  <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginTop:6 }}>
+                    <span style={{ fontSize:11,color:'rgba(255,255,255,0.45)',fontFamily:'DM Mono, monospace' }}>{selectedInd?.icon} {selectedInd?.label}</span>
+                    {(business.niche||customSub) && <><span style={{ color:'rgba(255,255,255,0.2)' }}>·</span><span style={{ fontSize:11,color:'rgba(255,255,255,0.45)',fontFamily:'DM Mono, monospace' }}>{business.niche||customSub}</span></>}
+                  </div>
                 </div>
-              </div>
+              )}
+              {generatedStrategy && (
+                <div style={{ marginBottom:24, maxHeight:440, overflowY:'auto' }}>
+                  <StrategyDisplay strategy={generatedStrategy} />
+                </div>
+              )}
               <div style={{ display:'flex',gap:12 }}>
-                <button onClick={()=>setStep(2)} style={{ background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.5)',borderRadius:9999,padding:'13px 22px',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:'Manrope, sans-serif' }}>← Back</button>
-                <button onClick={generateAndSave} disabled={loading} style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#c9a84c',color:'#000',border:'none',borderRadius:9999,padding:'13px',fontSize:14,fontWeight:700,cursor:loading?'not-allowed':'pointer',opacity:loading?0.7:1,fontFamily:'Manrope, sans-serif' }}>
-                  {loading?<><Loader2 size={14} className="spin"/>Setting up...</>:'Launch my dashboard →'}
+                <button onClick={()=>{ if(generatedStrategy){setGeneratedStrategy('');} else setStep(2); }}
+                  style={{ background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.5)',borderRadius:9999,padding:'13px 22px',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:'Manrope, sans-serif' }}>
+                  {generatedStrategy ? '↺ Regenerate' : '← Back'}
                 </button>
+                {!generatedStrategy ? (
+                  <button onClick={generateStrategy} disabled={loading} style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#c9a84c',color:'#000',border:'none',borderRadius:9999,padding:'13px',fontSize:14,fontWeight:700,cursor:loading?'not-allowed':'pointer',opacity:loading?0.7:1,fontFamily:'Manrope, sans-serif' }}>
+                    {loading?<><Loader2 size={14} className="spin"/>Building strategy...</>:<><Sparkles size={14}/>Generate My Strategy</>}
+                  </button>
+                ) : (
+                  <button onClick={launch} disabled={loading} style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#c9a84c',color:'#000',border:'none',borderRadius:9999,padding:'13px',fontSize:14,fontWeight:700,cursor:loading?'not-allowed':'pointer',opacity:loading?0.7:1,fontFamily:'Manrope, sans-serif' }}>
+                    {loading?<><Loader2 size={14} className="spin"/>Launching...</>:'Launch Dashboard →'}
+                  </button>
+                )}
               </div>
             </motion.div>
           )}
@@ -828,9 +853,7 @@ function CampaignBuilder({ business, creators, callAI, onDone, onBack }:any) {
         </div>
         {brief&&(
           <div style={{ marginBottom:16 }}>
-            <div style={{ background:'rgba(201,168,76,0.05)',border:'1px solid rgba(201,168,76,0.15)',borderRadius:14,padding:20,marginBottom:12,maxHeight:280,overflowY:'auto' }}>
-              <pre style={{ whiteSpace:'pre-wrap',fontFamily:'Manrope, sans-serif',fontSize:13,color:'rgba(255,255,255,0.7)',lineHeight:1.8 }}>{brief}</pre>
-            </div>
+            <BriefDisplay brief={brief} />
             <div style={{ display:'flex',gap:12 }}>
               <button onClick={()=>setBrief('')} style={{ background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.5)',borderRadius:9999,padding:'13px 20px',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:'Manrope, sans-serif' }}>← Edit</button>
               <button onClick={save} disabled={saving} style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,background:'#c9a84c',color:'#000',border:'none',borderRadius:9999,padding:'13px',fontSize:14,fontWeight:700,cursor:saving?'not-allowed':'pointer',opacity:saving?0.7:1,fontFamily:'Manrope, sans-serif' }}>
@@ -842,6 +865,116 @@ function CampaignBuilder({ business, creators, callAI, onDone, onBack }:any) {
       </div>
     </div>
   )
+}
+
+// ── Brief Display — parses AI campaign brief into cards ───────────────────
+function BriefDisplay({ brief }: { brief: string }) {
+  const sec = (label: string, next: string) => brief.match(new RegExp(`${label}:\\s*([\\s\\S]+?)(?=${next}:|$)`, 'i'))?.[1]?.trim() || '';
+  const title       = brief.match(/CAMPAIGN TITLE:\s*(.+)/i)?.[1]?.trim() || '';
+  const objective   = sec('OBJECTIVE', 'TARGET AUDIENCE');
+  const audience    = sec('TARGET AUDIENCE', 'CONTENT STRATEGY');
+  const stratRaw    = sec('CONTENT STRATEGY', 'CREATOR REQUIREMENTS');
+  const strategy    = stratRaw.split('\n').filter(l=>l.trim().startsWith('-')).map(l=>l.replace(/^-\s*/,'').trim()).filter(Boolean);
+  const requirements= sec('CREATOR REQUIREMENTS', 'DELIVERABLES');
+  const deliverables= sec('DELIVERABLES', 'TIMELINE');
+  const timeline    = sec('TIMELINE', 'SUCCESS METRICS');
+  const metrics     = sec('SUCCESS METRICS', 'WHY THIS WORKS');
+  const whyKashmir  = brief.match(/WHY THIS WORKS FOR KASHMIR:\s*([\s\S]+?)$/i)?.[1]?.trim() || '';
+  return (
+    <div style={{ display:'flex',flexDirection:'column',gap:10,marginBottom:16 }}>
+      {title && (
+        <div style={{ background:'rgba(201,168,76,0.08)',border:'1px solid rgba(201,168,76,0.2)',borderRadius:16,padding:'20px 22px' }}>
+          <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'#c9a84c',letterSpacing:'0.15em',marginBottom:8 }}>✦ CAMPAIGN</div>
+          <h3 style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:30,letterSpacing:'0.04em',color:'#f5f0e8',margin:0,lineHeight:1 }}>{title}</h3>
+          {objective&&<p style={{ fontSize:13,color:'rgba(255,255,255,0.6)',fontFamily:'Manrope, sans-serif',margin:'10px 0 0',lineHeight:1.65 }}>{objective}</p>}
+        </div>
+      )}
+      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+        {audience&&<div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.14em',marginBottom:7 }}>TARGET AUDIENCE</div><p style={{ fontSize:12,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.65 }}>{audience}</p></div>}
+        {requirements&&<div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.14em',marginBottom:7 }}>CREATOR FIT</div><p style={{ fontSize:12,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.65 }}>{requirements}</p></div>}
+      </div>
+      {strategy.length>0&&(
+        <div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px' }}>
+          <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.14em',marginBottom:10 }}>CONTENT STRATEGY</div>
+          <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
+            {strategy.map((s,i)=>(
+              <div key={i} style={{ display:'flex',gap:10,alignItems:'flex-start' }}>
+                <div style={{ width:20,height:20,borderRadius:'50%',background:'rgba(201,168,76,0.12)',border:'1px solid rgba(201,168,76,0.25)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1 }}>
+                  <span style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:10,color:'#c9a84c' }}>{i+1}</span>
+                </div>
+                <span style={{ fontSize:13,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',lineHeight:1.55 }}>{s}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+        {deliverables&&<div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.14em',marginBottom:7 }}>DELIVERABLES</div><p style={{ fontSize:12,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.65 }}>{deliverables}</p></div>}
+        {timeline&&<div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.14em',marginBottom:7 }}>TIMELINE</div><p style={{ fontSize:12,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.65 }}>{timeline}</p></div>}
+      </div>
+      {metrics&&<div style={{ background:'rgba(92,224,184,0.06)',border:'1px solid rgba(92,224,184,0.15)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'#5ce0b8',letterSpacing:'0.14em',marginBottom:7 }}>SUCCESS METRICS</div><p style={{ fontSize:12,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.65 }}>{metrics}</p></div>}
+      {whyKashmir&&<div style={{ background:'rgba(201,168,76,0.05)',border:'1px solid rgba(201,168,76,0.15)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'#c9a84c',letterSpacing:'0.14em',marginBottom:7 }}>WHY THIS WORKS FOR KASHMIR</div><p style={{ fontSize:12,color:'rgba(255,255,255,0.6)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.7,fontStyle:'italic' }}>{whyKashmir}</p></div>}
+    </div>
+  );
+}
+
+// ── Strategy Display — parses AI business strategy into cards ─────────────
+function StrategyDisplay({ strategy }: { strategy: string }) {
+  const sec = (label: string, next: string) => strategy.match(new RegExp(`${label}:\\s*([\\s\\S]+?)(?=${next}:|$)`, 'i'))?.[1]?.trim() || '';
+  const score      = strategy.match(/OPPORTUNITY SCORE:\s*(.+)/i)?.[1]?.trim() || '';
+  const why        = sec('WHY CREATOR MARKETING', 'TOP 3');
+  const typesRaw   = sec('TOP 3 CREATOR TYPES[^:]*', 'FIRST CAMPAIGN');
+  const types      = typesRaw.split('\n').filter(l=>l.trim().match(/^\d+\.|^-/)).map(l=>l.replace(/^\d+\.\s*|-\s*/,'').trim()).filter(Boolean);
+  const campaign   = sec('FIRST CAMPAIGN IDEA', 'PROJECTED IMPACT');
+  const impact     = sec('PROJECTED IMPACT', 'FUTURE');
+  const movesRaw   = strategy.match(/FUTURE-PROOFING MOVES:\s*([\s\S]+?)$/i)?.[1]?.trim() || '';
+  const moves      = movesRaw.split('\n').filter(l=>l.trim().match(/^\d+\.|^-/)).map(l=>l.replace(/^\d+\.\s*|-\s*/,'').trim()).filter(Boolean);
+  return (
+    <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+      {score&&(
+        <div style={{ background:'rgba(201,168,76,0.08)',border:'1px solid rgba(201,168,76,0.2)',borderRadius:14,padding:'16px 18px',display:'flex',alignItems:'center',gap:16 }}>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:48,color:'#c9a84c',letterSpacing:'0.04em',lineHeight:1 }}>{score}</div>
+          <div>
+            <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(201,168,76,0.6)',letterSpacing:'0.15em',marginBottom:4 }}>OPPORTUNITY SCORE</div>
+            <p style={{ fontSize:12,color:'rgba(255,255,255,0.5)',fontFamily:'Manrope, sans-serif',margin:0 }}>Creator marketing fit for your business</p>
+          </div>
+        </div>
+      )}
+      {why&&<div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.14em',marginBottom:7 }}>WHY CREATOR MARKETING</div><p style={{ fontSize:13,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.7 }}>{why}</p></div>}
+      {types.length>0&&(
+        <div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px' }}>
+          <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.14em',marginBottom:10 }}>TOP CREATOR TYPES FOR YOU</div>
+          <div style={{ display:'flex',flexDirection:'column',gap:7 }}>
+            {types.map((t,i)=>(
+              <div key={i} style={{ display:'flex',gap:10,alignItems:'flex-start' }}>
+                <div style={{ width:22,height:22,borderRadius:'50%',background:'rgba(201,168,76,0.12)',border:'1px solid rgba(201,168,76,0.25)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                  <span style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:11,color:'#c9a84c' }}>{i+1}</span>
+                </div>
+                <span style={{ fontSize:13,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',lineHeight:1.5 }}>{t}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {campaign&&<div style={{ background:'rgba(92,141,224,0.06)',border:'1px solid rgba(92,141,224,0.15)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'#5c8de0',letterSpacing:'0.14em',marginBottom:7 }}>FIRST CAMPAIGN IDEA</div><p style={{ fontSize:13,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.7 }}>{campaign}</p></div>}
+      {impact&&<div style={{ background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'14px 16px' }}><div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'rgba(255,255,255,0.3)',letterSpacing:'0.14em',marginBottom:7 }}>PROJECTED IMPACT</div><p style={{ fontSize:13,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',margin:0,lineHeight:1.7 }}>{impact}</p></div>}
+      {moves.length>0&&(
+        <div style={{ background:'rgba(92,224,184,0.06)',border:'1px solid rgba(92,224,184,0.15)',borderRadius:12,padding:'14px 16px' }}>
+          <div style={{ fontSize:9,fontFamily:'DM Mono, monospace',color:'#5ce0b8',letterSpacing:'0.14em',marginBottom:10 }}>FUTURE-PROOFING MOVES</div>
+          <div style={{ display:'flex',flexDirection:'column',gap:7 }}>
+            {moves.map((m,i)=>(
+              <div key={i} style={{ display:'flex',gap:10,alignItems:'flex-start' }}>
+                <div style={{ width:22,height:22,borderRadius:'50%',background:'rgba(92,224,184,0.1)',border:'1px solid rgba(92,224,184,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                  <span style={{ fontFamily:'Bebas Neue, sans-serif',fontSize:11,color:'#5ce0b8' }}>{i+1}</span>
+                </div>
+                <span style={{ fontSize:13,color:'rgba(255,255,255,0.65)',fontFamily:'Manrope, sans-serif',lineHeight:1.5 }}>{m}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Unused import cleanup ─────────────────────────────────────────────────
