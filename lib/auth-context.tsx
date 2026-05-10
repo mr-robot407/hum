@@ -9,10 +9,15 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: any; needsConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUpWithUsername: (username: string, password: string) => Promise<{ error: any; needsConfirmation: boolean }>;
+  signInWithUsername: (username: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+const toEmail = (username: string) =>
+  `${username.toLowerCase().replace(/[^a-z0-9_]/g, '')}@hum.local`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -45,12 +50,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const signUpWithUsername = async (username: string, password: string) => {
+    const email = toEmail(username);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { username } },
+    });
+    return { error, needsConfirmation: !error && !data?.session };
+  };
+
+  const signInWithUsername = async (username: string, password: string) => {
+    const email = toEmail(username);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signUpWithUsername, signInWithUsername, signOut }}>
       {children}
     </AuthContext.Provider>
   );
