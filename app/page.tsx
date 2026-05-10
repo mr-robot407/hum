@@ -198,12 +198,12 @@ export default function HUM() {
   }
 
   const saveBusiness = async (strategy:string) => {
-    try {
-      const handle = (business.handle||business.name.toLowerCase().replace(/\s+/g,'')).replace('@','')
-      const bizRes = await fetch('/api/businesses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...business, handle, ai_strategy:strategy, user_id:user?.id}) })
-      const bizData = await bizRes.json()
-      setBusiness(p=>({...p, handle, ai_strategy:strategy, id: bizData.business?.id}))
-    } catch {}
+    const handle = (business.handle||business.name.toLowerCase().replace(/\s+/g,'')).replace('@','')
+    const { data: { user: au } } = await supabase.auth.getUser()
+    const uid = user?.id || au?.id
+    const bizRes = await fetch('/api/businesses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...business, handle, ai_strategy:strategy, user_id:uid}) })
+    const bizData = await bizRes.json()
+    if (bizData.business) setBusiness((p:any)=>({...p, handle, ai_strategy:strategy, id: bizData.business.id}))
     setBusinessView('dashboard')
     fetchAll('business')
   }
